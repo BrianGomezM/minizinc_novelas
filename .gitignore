@@ -1,0 +1,52 @@
+# === General ===
+.DS_Store
+*.log
+*.env
+*.env.*
+
+# === Python / FastAPI ===
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+.venv/
+venv/
+ENV/
+env/
+*.sqlite3
+
+# pipenv / poetry / pip-tools
+Pipfile.lock
+poetry.lock
+requirements.txt~
+
+# === MiniZinc ===
+*.dzn~  # Archivos temporales
+*.mzn~  # Archivos temporales
+*.ozn    # Archivos de salida generados
+*.json  # Salidas generadas si las exportas así
+
+# === Node.js / Next.js ===
+node_modules/
+.next/
+dist/
+.cache/
+out/
+
+# === IDEs y editores ===
+.vscode/
+.idea/
+*.swp
+*~
+
+# === Frontend build output ===
+build/
+
+# === Sistema operativo ===
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# === Otros ===
+*.bak
