@@ -5,7 +5,7 @@ import { ProcesadorArchivo } from "@/components/procesador-archivo"
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white to-gray-100">
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-white to-gray-100">
       <header className="bg-red-700 text-white py-4 md:py-6 shadow-md">
         <div className="container mx-auto px-4">
           <h1 className="text-2xl md:text-3xl font-bold text-center">
@@ -17,27 +17,15 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="container mx-auto py-6 md:py-8 px-4">
+      <main className="container mx-auto py-6 md:py-8 px-4 flex-1">
         <Tabs defaultValue="procesador" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-6 md:mb-8">
-            <TabsTrigger value="procesador" className="text-sm md:text-lg py-2 md:py-3">
+          <TabsList className="w-full mb-6 md:mb-8">
+            <TabsTrigger value="procesador" className="text-sm md:text-lg py-2 md:py-3 w-full">
               Procesador de Archivo
-            </TabsTrigger>
-            <TabsTrigger value="basico" className="text-sm md:text-lg py-2 md:py-3">
-              Planificación Básica
-            </TabsTrigger>
-            <TabsTrigger value="avanzado" className="text-sm md:text-lg py-2 md:py-3">
-              Restricciones Adicionales
             </TabsTrigger>
           </TabsList>
           <TabsContent value="procesador">
             <ProcesadorArchivo />
-          </TabsContent>
-          <TabsContent value="basico">
-            <PlanificadorBasico />
-          </TabsContent>
-          <TabsContent value="avanzado">
-            <PlanificadorAvanzado />
           </TabsContent>
         </Tabs>
       </main>

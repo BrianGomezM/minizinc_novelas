@@ -8,6 +8,8 @@ export function parseDznFile(content) {
   const data = {
     actores: [],
     escenas: [],
+    disponibilidad: [],
+    evitar: [],
     datosOriginales: {
       participacion: [],
       costos: [],
@@ -18,73 +20,59 @@ export function parseDznFile(content) {
   try {
     // Extraer nombres de actores
     const actoresMatch = content.match(/ACTORES\s*=\s*\{([^}]+)\}/i)
+    let nombresActores = []
     if (actoresMatch && actoresMatch[1]) {
-      const nombresActores = actoresMatch[1].split(",").map((nombre) => nombre.trim())
-
-      // Extraer costos de actores
-      const costosMatch = content.match(/costo_actor\s*=\s*\[([\d\s,.]+)\]/i)
-      let costos = []
-      if (costosMatch && costosMatch[1]) {
-        costos = costosMatch[1].split(",").map((costo) => Number.parseFloat(costo.trim()))
-      }
-
-      // Crear objetos de actores
+      nombresActores = actoresMatch[1].split(",").map((nombre) => nombre.trim())
       data.actores = nombresActores.map((nombre, index) => ({
         id: index + 1,
         nombre,
-        costoPorMinuto: costos[index] || 0,
+        costoPorMinuto: 1, // Valor por defecto si no hay costo
       }))
+    }
 
-      // Guardar costos originales
+    // Extraer matriz de escenas (participación) y costos
+    const escenasMatch = content.match(/Escenas\s*=\s*\[\|([\s\S]*?)\|\];/i)
+    let matrizEscenas = []
+    let costos = []
+    if (escenasMatch && escenasMatch[1]) {
+      const filas = escenasMatch[1].trim().split("\n").filter(f => f.trim() !== "")
+      for (const fila of filas) {
+        let cleanFila = fila.trim()
+        if (cleanFila.startsWith("|")) cleanFila = cleanFila.slice(1)
+        if (cleanFila.endsWith("|")) cleanFila = cleanFila.slice(0, -1)
+        const valores = cleanFila.split(",").map((v) => v.trim())
+        // La última columna es el costo
+        costos.push(parseInt(valores[valores.length - 1]))
+        // El resto son la participación
+        matrizEscenas.push(valores.slice(0, -1).map((v) => parseInt(v)))
+      }
+      data.datosOriginales.participacion = matrizEscenas
       data.datosOriginales.costos = costos
     }
 
-    // Extraer número de escenas
-    const numEscenasMatch = content.match(/num_escenas\s*=\s*(\d+)/i)
-    let numEscenas = 0
-    if (numEscenasMatch && numEscenasMatch[1]) {
-      numEscenas = Number.parseInt(numEscenasMatch[1])
-    }
-
-    // Extraer duración de escenas
-    const duracionMatch = content.match(/duracion\s*=\s*\[([\d\s,.]+)\]/i)
+    // Extraer duraciones
+    const duracionMatch = content.match(/Duracion\s*=\s*\[([^\]]+)\]/i)
     let duraciones = []
     if (duracionMatch && duracionMatch[1]) {
-      duraciones = duracionMatch[1].split(",").map((duracion) => Number.parseInt(duracion.trim()))
-
-      // Guardar duraciones originales
+      duraciones = duracionMatch[1].split(",").map((d) => parseInt(d.trim()))
       data.datosOriginales.duraciones = duraciones
     }
 
-    // Extraer matriz de participación
-    const participacionMatch = content.match(/participacion\s*=\s*array2d$$[^,]+,[^,]+,\s*\[([\s\S]*?)\]$$/i)
-    const matrizParticipacion = []
-    if (participacionMatch && participacionMatch[1]) {
-      // Limpiar y extraer solo los números
-      const numerosStr = participacionMatch[1].replace(/[^0-9,]/g, "")
-      const numeros = numerosStr
-        .split(",")
-        .filter((n) => n !== "")
-        .map((n) => Number.parseInt(n))
-
-      // Reorganizar en matriz por actor
-      const numActores = data.actores.length
-      for (let i = 0; i < numActores; i++) {
-        const filaActor = numeros.slice(i * numEscenas, (i + 1) * numEscenas)
-        matrizParticipacion.push(filaActor)
-      }
-
-      // Guardar matriz original
-      data.datosOriginales.participacion = matrizParticipacion
+    // Asignar costos a los actores si existen
+    if (costos.length > 0 && data.actores.length === costos.length) {
+      data.actores = data.actores.map((actor, idx) => ({
+        ...actor,
+        costoPorMinuto: costos[idx]
+      }))
     }
 
     // Crear objetos de escenas
+    const numEscenas = matrizEscenas[0]?.length || 0
     data.escenas = Array.from({ length: numEscenas }, (_, i) => {
       // Determinar qué actores participan en esta escena
       const actoresParticipantes = data.actores
-        .filter((_, actorIndex) => matrizParticipacion[actorIndex] && matrizParticipacion[actorIndex][i] === 1)
+        .filter((_, actorIndex) => matrizEscenas[actorIndex] && matrizEscenas[actorIndex][i] === 1)
         .map((actor) => actor.id)
-
       return {
         id: i + 1,
         nombre: `Escena ${i + 1}`,
@@ -92,6 +80,34 @@ export function parseDznFile(content) {
         actoresParticipantes,
       }
     })
+
+    // Extraer disponibilidad
+    const dispMatch = content.match(/Disponibilidad\s*=\s*\[\|([\s\S]*?)\|\];/i)
+    if (dispMatch && dispMatch[1]) {
+      const filas = dispMatch[1].trim().split("\n")
+      for (const fila of filas) {
+        if (fila.trim() === "") continue
+        let cleanFila = fila.trim()
+        if (cleanFila.startsWith("|")) cleanFila = cleanFila.slice(1)
+        if (cleanFila.endsWith("|")) cleanFila = cleanFila.slice(0, -1)
+        const [nombre, valor] = cleanFila.split(",").map((v) => v.trim())
+        data.disponibilidad.push({ nombre, valor: parseInt(valor) })
+      }
+    }
+
+    // Extraer restricciones de evitar coincidencias
+    const evitarMatch = content.match(/Evitar\s*=\s*\[\|([\s\S]*?)\|\];/i)
+    if (evitarMatch && evitarMatch[1]) {
+      const filas = evitarMatch[1].trim().split("\n")
+      for (const fila of filas) {
+        if (fila.trim() === "") continue
+        let cleanFila = fila.trim()
+        if (cleanFila.startsWith("|")) cleanFila = cleanFila.slice(1)
+        if (cleanFila.endsWith("|")) cleanFila = cleanFila.slice(0, -1)
+        const [a1, a2] = cleanFila.split(",").map((v) => v.trim())
+        data.evitar.push([a1, a2])
+      }
+    }
 
     // Verificar que se hayan extraído datos válidos
     if (data.actores.length === 0 || data.escenas.length === 0) {
