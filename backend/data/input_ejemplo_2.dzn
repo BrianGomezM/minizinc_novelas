@@ -1,6 +1,6 @@
 ACTORES = {Actor1, Actor2, Actor3, Actor4, Actor5, Actor6, Actor7, Actor8};
 num_escenas = 20;
-num_pares = 4;
+num_pares = 1;
 
 % Matriz de participación + costo del actor (última columna)
 Escenas = [|
@@ -21,9 +21,9 @@ duracion = [2, 1, 1, 1, 1, 3, 1, 1, 1, 2, 1, 1, 2, 1, 2, 1, 1, 2, 1, 1];
 disponibilidad = [0, 0, 23, 0, 80, 10, 5, 100];
 
 % Pares de actores a evitar en simultáneo
-evitar_pares = array2d(1..4, 1..2, [
-    Actor1, Actor3,
-    Actor1, Actor4,
-    Actor2, Actor3,
-    Actor2, Actor4
-]);
+evitar_pares = 
+    array2d(1..num_pares, 1..2, [
+        Actor1, Actor2,
+    ]);
+
+
