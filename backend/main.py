@@ -7,63 +7,55 @@ import re
 
 app = FastAPI()
 
-# Ruta absoluta al archivo MiniZinc en la carpeta models
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.join(BASE_DIR, "models", "modelo_telenovela.mzn")
+MODEL_PATH_v1 = os.path.join(BASE_DIR, "models", "modeloDesenfreno.mzn")
+MODEL_PATH_v2 = os.path.join(BASE_DIR, "models", "modelo_telenovela_v2.mzn")  # puedes cambiar este si el archivo es distinto
 
 def parse_minizinc_output(output: str) -> dict:
     try:
         lines = output.strip().splitlines()
         result = {}
-
         orden_match = re.search(r"Orden de escenas: \[(.*?)\]", output)
         result["orden_escenas"] = list(map(int, orden_match.group(1).split(","))) if orden_match else []
-
-        costo_total_match = re.search(r"Costo total: (\d+)", output)
+        costo_total_match = re.search(r"Coste total: (\d+)", output)
         result["costo_total"] = int(costo_total_match.group(1)) if costo_total_match else 0
-
         tiempo_espera_match = re.search(r"Tiempo compartido actores a evitar: (\d+)", output)
-        result["tiempo_compartido_actores_evitar"] = int(tiempo_espera_match.group(1)) if tiempo_espera_match else 0
-
+        if tiempo_espera_match:
+            result["tiempo_compartido_actores_evitar"] = int(tiempo_espera_match.group(1))
         actores = []
-        actor_pattern = re.compile(r"Actor (\w+): (\d+)->(\d+) \((\d+)u, Costo: (\d+)\)")
+        actor_pattern = re.compile(r"Actor(\w*): Escenas \[(\d+)\.\.(\d+)\] Coste = (\d+)")
         for line in lines:
             match = actor_pattern.search(line)
             if match:
                 actores.append({
-                    "nombre": match.group(1),
+                    "nombre": match.group(1).strip(),
                     "rango_escenas_inicio": int(match.group(2)),
                     "rango_escenas_fin": int(match.group(3)),
-                    "unidades": int(match.group(4)),
-                    "costo": int(match.group(5))
+                    "costo": int(match.group(4))
                 })
-        result["tiempos_por_actor"] = actores
-
+        result["detalles_por_actor"] = actores
         return result
-
     except Exception as e:
         return {"error": f"Error al parsear la salida de MiniZinc: {str(e)}"}
 
-@app.post("/run-minizinc/")
-async def run_minizinc_service(file: UploadFile = File(...)):
+# Endpoint para parte 1
+@app.post("/parte_1/")
+async def parte_1(file: UploadFile = File(...)):
+    return await process_file(file, MODEL_PATH_v1)
+
+# Endpoint para parte 2
+@app.post("/parte_2/")
+async def parte_2(file: UploadFile = File(...)):
+    return await process_file(file, MODEL_PATH_v2)
+async def process_file(file: UploadFile, model_path: str):
     try:
-        # Guardar el archivo .dzn temporalmente
         with NamedTemporaryFile(delete=False, suffix=".dzn") as temp_file:
             contents = await file.read()
             temp_file.write(contents)
             temp_file_path = temp_file.name
-
-        # Ejecutar MiniZinc
-        output = run_minizinc(MODEL_PATH, temp_file_path)
-        print(f"Salida de MiniZinc: {output}")
-
-        # Parsear el resultado
+        output = run_minizinc(model_path, temp_file_path)
         parsed_result = parse_minizinc_output(output)
-
-        # Eliminar el archivo temporal
         os.remove(temp_file_path)
-
         return JSONResponse(content=parsed_result)
-
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})

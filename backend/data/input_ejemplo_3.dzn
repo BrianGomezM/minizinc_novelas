@@ -1,0 +1,24 @@
+ACTORES = {Actor1, Actor2, Actor3, Actor4};
+num_escenas = 6;
+num_pares = 0;
+
+% Escenas: cada fila corresponde a un actor
+% Las columnas representan participación en las escenas 1..5
+% La última columna es el costo por unidad de tiempo
+
+Escenas = [| 1,1,0,0,0,0,10
+           | 0,1,1,1,0,1,20
+           | 0,0,0,0,1,1,15
+           | 1,1,0,0,1,1,13|]; 
+
+% Duración de cada escena
+duracion = [2,1,1,1,3,4];
+
+% Disponibilidad de los actores (0 = tiempo ilimitado)
+disponibilidad =  =[|Actor1, 5
+                 |Actor2, 8
+                 |Actor3, 0
+                 |Actor4, 10|];
+
+% No hay actores a evitar en este ejemplo
+evitar_pares = array2d(1..0, 1..2, []);
