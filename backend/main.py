@@ -1,11 +1,22 @@
 from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 import os
 from utils.minizinc_runner import run_minizinc
 from tempfile import NamedTemporaryFile
 import re
 
 app = FastAPI()
+
+# CORS
+origins = ["*"]  # O la URL de tu frontend en producción
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH_v1 = os.path.join(BASE_DIR, "models", "modeloDesenfreno.mzn")
