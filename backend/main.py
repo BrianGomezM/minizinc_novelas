@@ -9,7 +9,7 @@ import re
 app = FastAPI()
 
 # CORS
-origins = ["*"]  # O la URL de tu frontend en producción
+origins = ["*"]  # Puedes restringir esto en producción
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -19,22 +19,32 @@ app.add_middleware(
 )
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH_v1 = os.path.join(BASE_DIR, "models", "modeloDesenfreno.mzn")
-MODEL_PATH_v2 = os.path.join(BASE_DIR, "models", "modelo_telenovela_v2.mzn")
+MODEL_PATH_v1 = os.path.join(BASE_DIR, "models", "modelo_desenfreno_parte_1.mzn")
+MODEL_PATH_v2 = os.path.join(BASE_DIR, "models", "modelo_desenfreno_parte_2.mzn")
 
 def parse_minizinc_output(output: str) -> dict:
     try:
         lines = output.strip().splitlines()
         result = {}
+
+        # Orden de escenas
         orden_match = re.search(r"Orden de escenas: \[(.*?)\]", output)
         result["orden_escenas"] = list(map(int, orden_match.group(1).split(","))) if orden_match else []
+
+        # Coste total
         costo_total_match = re.search(r"Coste total: (\d+)", output)
         result["costo_total"] = int(costo_total_match.group(1)) if costo_total_match else 0
-        tiempo_espera_match = re.search(r"Tiempo compartido actores a evitar: (\d+)", output)
-        if tiempo_espera_match:
-            result["tiempo_compartido_actores_evitar"] = int(tiempo_espera_match.group(1))
+
+        # Tiempo compartido (Evitar)
+        tiempo_compartido_match = re.search(r"Tiempo compartido.*?: (\d+)", output)
+        if tiempo_compartido_match:
+            result["tiempo_compartido_actores_evitar"] = int(tiempo_compartido_match.group(1))
+
+        # Detalles por actor
         actores = []
-        actor_pattern = re.compile(r"Actor(\w*): Escenas \[(\d+)\.\.(\d+)\] Coste = (\d+)")
+        actor_pattern = re.compile(
+            r"Actor(\w+): Escenas \[(\d+)\.\.(\d+)\] Coste = (\d+)(?:, Tiempo en estudio = (\d+))?"
+        )
         for line in lines:
             match = actor_pattern.search(line)
             if match:
@@ -44,7 +54,10 @@ def parse_minizinc_output(output: str) -> dict:
                     "rango_escenas_fin": int(match.group(3)),
                     "costo": int(match.group(4))
                 }
+                if match.group(5):
+                    actor_info["tiempo_en_estudio"] = int(match.group(5))
                 actores.append(actor_info)
+
         result["detalles_por_actor"] = actores
         return result
 

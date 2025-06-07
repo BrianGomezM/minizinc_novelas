@@ -13,7 +13,8 @@ def run_minizinc(model_path: str, data_path: str) -> str:
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             check=True,
-            text=True
+            text=True,
+            timeout=30
         )
 
         return result.stdout
