@@ -5,11 +5,8 @@ def run_minizinc(model_path: str, data_path: str) -> str:
     try:
         model_path = os.path.abspath(model_path)
         data_path = os.path.abspath(data_path)
-
-        print(f"Ejecutando MiniZinc con el modelo: {model_path} y los datos: {data_path}")
-        
         result = subprocess.run(
-            ["minizinc", "--solver", "COIN-BC", model_path, data_path],
+            ["minizinc", "--solver", "org.gecode.gecode", model_path, data_path],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             check=True,

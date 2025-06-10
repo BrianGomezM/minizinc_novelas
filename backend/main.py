@@ -25,44 +25,48 @@ MODEL_PATH_v2 = os.path.join(BASE_DIR, "models", "modelo_desenfreno_parte_2.mzn"
 def parse_minizinc_output(output: str) -> dict:
     try:
         lines = output.strip().splitlines()
-        result = {}
+        result = {
+            "orden_escenas": [],
+            "costo_total": 0,
+            "detalles_por_actor": []
+        }
 
         # Orden de escenas
         orden_match = re.search(r"Orden de escenas: \[(.*?)\]", output)
-        result["orden_escenas"] = list(map(int, orden_match.group(1).split(","))) if orden_match else []
+        if orden_match:
+            result["orden_escenas"] = list(map(int, orden_match.group(1).split(",")))
 
         # Coste total
         costo_total_match = re.search(r"Coste total: (\d+)", output)
-        result["costo_total"] = int(costo_total_match.group(1)) if costo_total_match else 0
+        if costo_total_match:
+            result["costo_total"] = int(costo_total_match.group(1))
 
-        # Tiempo compartido (Evitar)
+        # Tiempo compartido entre actores a evitar (solo en modelo 2)
         tiempo_compartido_match = re.search(r"Tiempo compartido.*?: (\d+)", output)
         if tiempo_compartido_match:
             result["tiempo_compartido_actores_evitar"] = int(tiempo_compartido_match.group(1))
 
         # Detalles por actor
-        actores = []
         actor_pattern = re.compile(
-            r"Actor(\w+): Escenas \[(\d+)\.\.(\d+)\] Coste = (\d+)(?:, Tiempo en estudio = (\d+))?"
+            r"Actor(\w+): Escenas \[(\d+)\.\.(\d+)\] Coste = (\d+), Tiempo en estudio = (\d+)"
         )
         for line in lines:
             match = actor_pattern.search(line)
             if match:
                 actor_info = {
-                    "nombre": match.group(1).strip(),
+                    "nombre": f"Actor{match.group(1)}",
                     "rango_escenas_inicio": int(match.group(2)),
                     "rango_escenas_fin": int(match.group(3)),
-                    "costo": int(match.group(4))
+                    "costo": int(match.group(4)),
+                    "tiempo_en_estudio": int(match.group(5))
                 }
-                if match.group(5):
-                    actor_info["tiempo_en_estudio"] = int(match.group(5))
-                actores.append(actor_info)
+                result["detalles_por_actor"].append(actor_info)
 
-        result["detalles_por_actor"] = actores
         return result
 
     except Exception as e:
         return {"error": f"Error al parsear la salida de MiniZinc: {str(e)}"}
+
 
 @app.post("/parte_1/")
 async def parte_1(file: UploadFile = File(...)):

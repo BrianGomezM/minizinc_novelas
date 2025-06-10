@@ -24,6 +24,7 @@ array[1..n_escenas] of var 1..n_escenas: invOrd;       % invOrd[e] = posición d
 array[ACTORES] of var 1..n_escenas: firstPos;           % primera posición en que cada actor aparece
 array[ACTORES] of var 1..n_escenas: lastPos;            % última posición en que cada actor aparece
 array[ACTORES] of var int: costo_actor;                  % coste individual por actor
+array[ACTORES] of var int: tiempo_presencia_actor;
 var int: costo_total;                                    % coste total a minimizar
 
 % Permutación e inversión
@@ -43,6 +44,12 @@ constraint forall(a in ACTORES)(
     )
 );
 
+constraint forall(a in ACTORES)(
+    tiempo_presencia_actor[a] = sum(p in firstPos[a]..lastPos[a])(
+        Duracion[order[p]]
+    )
+);
+
 % Definición del coste total
 constraint costo_total = sum(a in ACTORES)( costo_actor[a] );
 
@@ -50,13 +57,14 @@ constraint costo_total = sum(a in ACTORES)( costo_actor[a] );
 %solve :: int_search(order, dom_w_deg, indomain_min) minimize costo_total;
 solve minimize costo_total;
 % Salida de resultados
+
+
 output [
     "Orden de escenas: ", show(order), "\n",
     "Coste total: ", show(costo_total), "\n",
     "Detalles por actor:\n"
 ] ++ [
     "  " ++ show(a) ++ ": Escenas [" ++ show(firstPos[a]) ++ ".." ++ show(lastPos[a]) ++ "] " ++
-    "Coste = " ++ show(costo_actor[a]) ++ "\n"
+    "Coste = " ++ show(costo_actor[a]) ++ ", Tiempo en estudio = " ++ show(tiempo_presencia_actor[a]) ++ "\n"
     | a in ACTORES
 ];
-
