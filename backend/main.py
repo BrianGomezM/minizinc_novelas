@@ -48,7 +48,8 @@ def parse_minizinc_output(output: str) -> dict:
 
         # Detalles por actor
         actor_pattern = re.compile(
-            r"Actor(\w+): Escenas \[(\d+)\.\.(\d+)\] Coste = (\d+), Tiempo en estudio = (\d+)"
+            # r"Actor(\w+): Escenas \[(\d+)\.\.(\d+)\] Coste = (\d+), Tiempo en estudio = (\d+)"
+            r"(\w+): Escenas \[(\d+)\.\.(\d+)\] Coste = (\d+), Tiempo en estudio = (\d+)"
         )
         for line in lines:
             match = actor_pattern.search(line)
