@@ -97,41 +97,43 @@ export function GraficoParticipacion({ solucion, data }) {
       }
 
       // Dibujar los nombres de los actores en el eje Y
-      // Siempre mostrar el nombre completo, centrado verticalmente
+      // Ajustar el texto según el espacio disponible
       const fontSizeActores = rect.width < 500 ? "10px" : "12px"
       ctx.font = fontSizeActores + " Arial"
-      ctx.textAlign = "right"
-      ctx.textBaseline = "middle"
+
       data.actores.forEach((actor, index) => {
         const y = margin.top + index * alturaFila + alturaFila / 2
-        ctx.fillStyle = "#374151" // Gris oscuro
-        ctx.fillText(actor.nombre, margin.left - 12, y)
+        // Acortar nombres en pantallas pequeñas
+        const nombreMostrado = rect.width < 500 ? actor.nombre.split(" ")[0] : actor.nombre
+        ctx.fillText(nombreMostrado, margin.left - 10, y + 4)
         ctx.beginPath()
         ctx.moveTo(margin.left - 5, y)
         ctx.lineTo(margin.left, y)
         ctx.stroke()
       })
 
-      // Paleta de colores accesibles y diferenciados
+      // Colores en tonos de rojo y gris
       const colores = [
         "#dc2626", // Rojo
-        "#2563eb", // Azul
-        "#16a34a", // Verde
-        "#f59e42", // Naranja
-        "#a21caf", // Morado
-        "#eab308", // Amarillo
-        "#0ea5e9", // Celeste
-        "#f43f5e", // Rosa
-        "#7c3aed", // Violeta
-        "#f97316", // Naranja oscuro
+        "#ef4444", // Rojo más claro
+        "#b91c1c", // Rojo más oscuro
+        "#991b1b", // Rojo aún más oscuro
+        "#7f1d1d", // Rojo muy oscuro
+        "#6b7280", // Gris
+        "#4b5563", // Gris más oscuro
+        "#374151", // Gris aún más oscuro
+        "#9ca3af", // Gris claro
+        "#d1d5db", // Gris muy claro
       ]
 
       // Dibujar las barras de participación de los actores
       data.actores.forEach((actor, indexActor) => {
         const y = margin.top + indexActor * alturaFila
+
         // Encontrar los intervalos de tiempo en los que el actor está presente
         const intervalos = []
         let intervaloActual = null
+
         tiemposEscenas.forEach((escena) => {
           if (escena.actores.includes(actor.id)) {
             if (intervaloActual === null) {
@@ -144,22 +146,25 @@ export function GraficoParticipacion({ solucion, data }) {
             }
           }
         })
+
         if (intervaloActual !== null) {
           intervalos.push(intervaloActual)
         }
+
         // Dibujar los intervalos
         intervalos.forEach((intervalo) => {
           const x1 = margin.left + intervalo.inicio * escalaX
           const x2 = margin.left + intervalo.fin * escalaX
+
           ctx.fillStyle = colores[indexActor % colores.length]
           ctx.fillRect(x1, y + 5, x2 - x1, alturaFila - 10)
-          // Añadir texto centrado y grande si hay suficiente espacio
-          if (x2 - x1 > 30) {
-            ctx.fillStyle = "#fff"
-            ctx.font = "bold 14px Arial"
+
+          // Añadir texto si hay suficiente espacio
+          if (x2 - x1 > 40) {
+            ctx.fillStyle = "#ffffff" // Blanco
+            ctx.font = "10px Arial"
             ctx.textAlign = "center"
-            ctx.textBaseline = "middle"
-            ctx.fillText(`${intervalo.fin - intervalo.inicio} min`, (x1 + x2) / 2, y + alturaFila / 2)
+            ctx.fillText(`${intervalo.fin - intervalo.inicio} min`, (x1 + x2) / 2, y + alturaFila / 2 + 4)
           }
         })
       })

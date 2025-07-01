@@ -1,7 +1,6 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { PlanificadorBasico } from "@/components/planificador-basico"
-import { PlanificadorAvanzado } from "@/components/planificador-avanzado"
-import { ProcesadorArchivo } from "@/components/procesador-archivo"
+import { ProcesadorArchivoParte1 } from "@/components/procesador-archivo-parte1"
+import { ProcesadorArchivoParte2 } from "@/components/procesador-archivo-parte2"
 
 export default function Home() {
   return (
@@ -18,14 +17,20 @@ export default function Home() {
       </header>
 
       <main className="container mx-auto py-6 md:py-8 px-4 flex-1">
-        <Tabs defaultValue="procesador" className="w-full">
-          <TabsList className="w-full mb-6 md:mb-8">
-            <TabsTrigger value="procesador" className="text-sm md:text-lg py-2 md:py-3 w-full">
-              Procesador de Archivo
+        <Tabs defaultValue="procesador1" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-6 md:mb-8">
+            <TabsTrigger value="procesador1" className="text-sm md:text-lg py-2 md:py-3">
+              Procesador Parte 1 - Modelo Básico
+            </TabsTrigger>
+            <TabsTrigger value="procesador2" className="text-sm md:text-lg py-2 md:py-3">
+              Procesador Parte 2 - Modelo Avanzado
             </TabsTrigger>
           </TabsList>
-          <TabsContent value="procesador">
-            <ProcesadorArchivo />
+          <TabsContent value="procesador1">
+            <ProcesadorArchivoParte1 />
+          </TabsContent>
+          <TabsContent value="procesador2">
+            <ProcesadorArchivoParte2 />
           </TabsContent>
         </Tabs>
       </main>

@@ -29,10 +29,8 @@ export function VisualizacionAvanzada({ resultados, data }) {
             </div>
 
             <div className="bg-white p-3 rounded-lg border border-gray-300 text-center">
-              <p className="text-sm text-gray-600">Tiempo Total</p>
-              <p className="text-xl font-semibold text-gray-800">
-                {resultados.tiempos_por_actor.reduce((sum, actor) => Math.max(sum, actor.tiempo), 0)} min
-              </p>
+              <p className="text-sm text-gray-600">Tiempo Compartido Evitar</p>
+              <p className="text-xl font-semibold text-gray-800">{resultados.tiempo_compartido_actores_evitar}</p>
             </div>
           </div>
         </div>
@@ -70,7 +68,7 @@ export function VisualizacionAvanzada({ resultados, data }) {
         <TabsContent value="acumulado">
           <div className="bg-white p-4 rounded-lg border border-gray-300">
             <h3 className="text-lg font-semibold mb-4 text-gray-800">Gráfico de Costos Acumulados</h3>
-            <GraficoCostosAcumulados resultados={resultados} />
+            <GraficoCostosAcumulados resultados={resultados} data={data} />
           </div>
         </TabsContent>
       </Tabs>
@@ -78,20 +76,18 @@ export function VisualizacionAvanzada({ resultados, data }) {
   )
 }
 
-// Modificar la función DiagramaGantt para hacerla responsive
+// Diagrama de Gantt corregido: Actor x Escena
 function DiagramaGantt({ resultados, data }) {
   const canvasRef = useRef(null)
 
   useEffect(() => {
-    if (!canvasRef.current || !resultados) return
+    if (!canvasRef.current || !resultados || !data) return
 
-    // Función para dibujar el gráfico
     const dibujarGrafico = () => {
       const canvas = canvasRef.current
       const ctx = canvas.getContext("2d")
       const dpr = window.devicePixelRatio || 1
 
-      // Ajustar el canvas para pantallas de alta resolución
       const rect = canvas.getBoundingClientRect()
       canvas.width = rect.width * dpr
       canvas.height = rect.height * dpr
@@ -99,54 +95,39 @@ function DiagramaGantt({ resultados, data }) {
       canvas.style.width = `${rect.width}px`
       canvas.style.height = `${rect.height}px`
 
-      // Limpiar el canvas
       ctx.clearRect(0, 0, canvas.width, canvas.height)
 
-      // Configuración del gráfico
       const margin = {
         top: 40,
         right: 20,
         bottom: 50,
-        left: rect.width < 500 ? 40 : 60, // Ajustar margen izquierdo en pantallas pequeñas
+        left: rect.width < 500 ? 60 : 80,
       }
       const width = rect.width - margin.left - margin.right
       const height = rect.height - margin.top - margin.bottom
 
-      // Obtener datos para el diagrama
-      const actores = resultados.tiempos_por_actor.map((actor) => actor.nombre)
+      const actores = resultados.tiempos_por_actor
+      const ordenEscenas = resultados.orden_escenas
+      const numEscenas = ordenEscenas.length
 
-      // Calcular tiempos acumulados para cada escena
-      let tiempoAcumulado = 0
-      const tiemposEscenas = resultados.orden_escenas.map((escenaId) => {
-        const escena = data?.escenas?.find((e) => e.id === escenaId) || { duracion: 2 }
-        const inicio = tiempoAcumulado
-        tiempoAcumulado += escena.duracion
-        return {
-          id: escenaId,
-          inicio,
-          fin: tiempoAcumulado,
-          duracion: escena.duracion,
-        }
-      })
-
-      const tiempoTotal = tiempoAcumulado
-      const escalaX = width / tiempoTotal
+      // Calcular escalas
+      const anchoEscena = width / numEscenas
+      const alturaActor = height / actores.length
 
       // Dibujar ejes
       ctx.beginPath()
       ctx.moveTo(margin.left, margin.top)
       ctx.lineTo(margin.left, height + margin.top)
       ctx.lineTo(width + margin.left, height + margin.top)
-      ctx.strokeStyle = "#6b7280" // Gris
+      ctx.strokeStyle = "#6b7280"
       ctx.stroke()
 
-      // Etiqueta del eje X
-      ctx.fillStyle = "#374151" // Gris oscuro
+      // Etiquetas de los ejes
+      ctx.fillStyle = "#374151"
       ctx.font = "12px Arial"
       ctx.textAlign = "center"
-      ctx.fillText("Tiempo (minutos)", margin.left + width / 2, height + margin.top + 35)
+      ctx.fillText("Escenas (en orden de ejecución)", margin.left + width / 2, height + margin.top + 35)
 
-      // Etiqueta del eje Y
       ctx.save()
       ctx.translate(15, margin.top + height / 2)
       ctx.rotate(-Math.PI / 2)
@@ -154,112 +135,134 @@ function DiagramaGantt({ resultados, data }) {
       ctx.fillText("Actores", 0, 0)
       ctx.restore()
 
-      // Calcular la altura de cada fila de actor
-      const alturaFila = height / actores.length
+      // Dibujar nombres de escenas en el eje X
+      const fontSizeEscenas = rect.width < 500 ? "10px" : "12px"
+      ctx.font = fontSizeEscenas + " Arial"
+      ctx.textAlign = "center"
 
-      // Dibujar las marcas de tiempo en el eje X
-      // Ajustar el intervalo según el ancho disponible
-      const numMarcasDeseadas = rect.width < 500 ? 5 : 10
-      const intervaloTiempo = Math.ceil(tiempoTotal / numMarcasDeseadas)
+      ordenEscenas.forEach((escenaId, index) => {
+        const x = margin.left + index * anchoEscena + anchoEscena / 2
 
-      for (let t = 0; t <= tiempoTotal; t += intervaloTiempo) {
-        const x = margin.left + t * escalaX
+        // Línea de separación
+        ctx.beginPath()
+        ctx.moveTo(margin.left + index * anchoEscena, margin.top)
+        ctx.lineTo(margin.left + index * anchoEscena, height + margin.top)
+        ctx.strokeStyle = "#e5e7eb"
+        ctx.stroke()
+
+        // Etiqueta de escena
+        ctx.fillStyle = "#374151"
+        ctx.fillText(`E${escenaId}`, x, height + margin.top + 20)
+
+        // Línea de marca
         ctx.beginPath()
         ctx.moveTo(x, height + margin.top)
         ctx.lineTo(x, height + margin.top + 5)
-        ctx.stroke()
-        ctx.fillText(t.toString(), x, height + margin.top + 20)
-      }
-
-      // Dibujar los nombres de los actores en el eje Y
-      // Ajustar el texto según el espacio disponible
-      const fontSizeActores = rect.width < 500 ? "10px" : "12px"
-      ctx.font = fontSizeActores + " Arial"
-
-      actores.forEach((actor, index) => {
-        const y = margin.top + index * alturaFila + alturaFila / 2
-        // Acortar nombres en pantallas pequeñas
-        const nombreMostrado = rect.width < 500 ? actor.split(" ")[0] : actor
-        ctx.fillText(nombreMostrado, margin.left - 10, y + 4)
-        ctx.beginPath()
-        ctx.moveTo(margin.left - 5, y)
-        ctx.lineTo(margin.left, y)
+        ctx.strokeStyle = "#6b7280"
         ctx.stroke()
       })
 
-      // Colores en tonos de rojo y gris
-      const colores = [
-        "#dc2626", // Rojo
-        "#ef4444", // Rojo más claro
-        "#b91c1c", // Rojo más oscuro
-        "#991b1b", // Rojo aún más oscuro
-        "#7f1d1d", // Rojo muy oscuro
-      ]
+      // Dibujar nombres de actores en el eje Y
+      const fontSizeActores = rect.width < 500 ? "10px" : "12px"
+      ctx.font = fontSizeActores + " Arial"
+      ctx.textAlign = "right"
 
-      // Simular participación de actores en escenas
-      actores.forEach((actor, indexActor) => {
-        const y = margin.top + indexActor * alturaFila
-        const actorData = resultados.tiempos_por_actor.find((a) => a.nombre === actor)
+      actores.forEach((actor, index) => {
+        const y = margin.top + index * alturaActor + alturaActor / 2
 
-        // Simular intervalos de tiempo para este actor
-        const tiempoActor = actorData.tiempo
-        const intervalos = []
-
-        // Distribuir el tiempo del actor entre las escenas (simulación)
-        let tiempoRestante = tiempoActor
-        let tiempoInicio = 0
-
-        // Asignar tiempo a escenas de manera aleatoria pero coherente
-        while (tiempoRestante > 0 && tiempoInicio < tiempoTotal) {
-          const duracionIntervalo = Math.min(tiempoRestante, 2 + Math.floor(Math.random() * 3))
-          intervalos.push({
-            inicio: tiempoInicio,
-            fin: tiempoInicio + duracionIntervalo,
-          })
-
-          tiempoRestante -= duracionIntervalo
-          tiempoInicio += duracionIntervalo + Math.floor(Math.random() * 3)
+        // Línea de separación horizontal
+        if (index > 0) {
+          ctx.beginPath()
+          ctx.moveTo(margin.left, margin.top + index * alturaActor)
+          ctx.lineTo(width + margin.left, margin.top + index * alturaActor)
+          ctx.strokeStyle = "#e5e7eb"
+          ctx.stroke()
         }
 
-        // Dibujar los intervalos
-        intervalos.forEach((intervalo) => {
-          const x1 = margin.left + intervalo.inicio * escalaX
-          const x2 = margin.left + intervalo.fin * escalaX
+        // Nombre del actor
+        ctx.fillStyle = "#374151"
+        const nombreMostrado = rect.width < 500 ? actor.nombre.replace("Actor", "A") : actor.nombre
+        ctx.fillText(nombreMostrado, margin.left - 10, y + 4)
+      })
 
-          ctx.fillStyle = colores[indexActor % colores.length]
-          ctx.fillRect(x1, y + 5, x2 - x1, alturaFila - 10)
+      // Colores para cada actor
+      const colores = ["#dc2626", "#ef4444", "#b91c1c", "#991b1b", "#7f1d1d"]
 
-          // Añadir texto si hay suficiente espacio
-          if (x2 - x1 > 40) {
-            ctx.fillStyle = "#ffffff" // Blanco
+      // Dibujar las barras de participación para cada actor
+      actores.forEach((actor, indexActor) => {
+        const y = margin.top + indexActor * alturaActor
+
+        // Encontrar las posiciones de inicio y fin en la secuencia
+        const posicionInicio = ordenEscenas.indexOf(actor.rango_escenas_inicio)
+        const posicionFin = ordenEscenas.indexOf(actor.rango_escenas_fin)
+
+        if (posicionInicio !== -1 && posicionFin !== -1) {
+          // Calcular coordenadas de la barra principal (rango completo)
+          const x1 = margin.left + posicionInicio * anchoEscena
+          const x2 = margin.left + (posicionFin + 1) * anchoEscena
+          const alturaBarra = alturaActor * 0.6
+
+          // Dibujar barra de rango completo (más transparente)
+          ctx.fillStyle = colores[indexActor % colores.length] + "40" // Con transparencia
+          ctx.fillRect(x1, y + (alturaActor - alturaBarra) / 2, x2 - x1, alturaBarra)
+
+          // Dibujar borde de la barra de rango
+          ctx.strokeStyle = colores[indexActor % colores.length]
+          ctx.lineWidth = 2
+          ctx.strokeRect(x1, y + (alturaActor - alturaBarra) / 2, x2 - x1, alturaBarra)
+
+          // Marcar las escenas específicas donde el actor realmente participa
+          const actorData = data.actores.find((a) => a.nombre === actor.nombre)
+          if (actorData) {
+            ordenEscenas.forEach((escenaId, escenaIndex) => {
+              const escena = data.escenas.find((e) => e.id === escenaId)
+
+              if (escena && escena.actoresParticipantes.includes(actorData.id)) {
+                // Esta escena tiene participación real del actor
+                const xEscena = margin.left + escenaIndex * anchoEscena
+
+                // Dibujar rectángulo sólido para participación real
+                ctx.fillStyle = colores[indexActor % colores.length]
+                ctx.fillRect(xEscena + 2, y + (alturaActor - alturaBarra) / 2 + 2, anchoEscena - 4, alturaBarra - 4)
+
+                // Añadir marca de participación
+                ctx.fillStyle = "#ffffff"
+                ctx.font = "bold 8px Arial"
+                ctx.textAlign = "center"
+                ctx.fillText("✓", xEscena + anchoEscena / 2, y + alturaActor / 2 + 3)
+              }
+            })
+          }
+
+          // Añadir texto con información del actor
+          if (x2 - x1 > 60) {
+            ctx.fillStyle = "#111827"
             ctx.font = "10px Arial"
             ctx.textAlign = "center"
-            ctx.fillText(`${intervalo.fin - intervalo.inicio} min`, (x1 + x2) / 2, y + alturaFila / 2 + 4)
+            ctx.fillText(`${actor.unidades}u - $${actor.costo}`, (x1 + x2) / 2, y + alturaActor / 2 - 8)
           }
-        })
+        }
       })
 
       // Título del gráfico
-      ctx.fillStyle = "#111827" // Casi negro
+      ctx.fillStyle = "#111827"
       ctx.font = "bold 14px Arial"
       ctx.textAlign = "center"
-      ctx.fillText("Diagrama de Gantt - Participación de Actores", margin.left + width / 2, 20)
+      ctx.fillText("Diagrama de Gantt - Actor x Escena", margin.left + width / 2, 20)
+
+      // Leyenda
+      ctx.font = "10px Arial"
+      ctx.textAlign = "left"
+      ctx.fillStyle = "#6b7280"
+      ctx.fillText("█ Rango de presencia", margin.left, height + margin.top + 45)
+      ctx.fillText("✓ Participación real", margin.left + 120, height + margin.top + 45)
     }
 
-    // Dibujar el gráfico inicialmente
     dibujarGrafico()
 
-    // Agregar event listener para redimensionar
-    const handleResize = () => {
-      dibujarGrafico()
-    }
-
+    const handleResize = () => dibujarGrafico()
     window.addEventListener("resize", handleResize)
-
-    // Limpiar event listener al desmontar
-    return () => {
-      window.removeEventListener("resize", handleResize)
-    }
+    return () => window.removeEventListener("resize", handleResize)
   }, [resultados, data])
 
   return (
@@ -269,29 +272,9 @@ function DiagramaGantt({ resultados, data }) {
   )
 }
 
-function TablaCostosAvanzada({ resultados }) {
+// Tabla de costos corregida para usar los datos exactos del backend
+function TablaCostosAvanzada({ resultados, data }) {
   if (!resultados) return null
-
-  const { tiempos_por_actor, costo_total } = resultados
-
-  // Simular datos de escenas para cada actor
-  const actoresConEscenas = tiempos_por_actor.map((actor) => {
-    // Generar escenas aleatorias para cada actor
-    const escenasAleatorias = []
-    const numEscenas = Math.floor(Math.random() * 3) + 2 // 2-4 escenas por actor
-
-    for (let i = 0; i < numEscenas; i++) {
-      const escenaId = resultados.orden_escenas[Math.floor(Math.random() * resultados.orden_escenas.length)]
-      if (!escenasAleatorias.includes(escenaId)) {
-        escenasAleatorias.push(escenaId)
-      }
-    }
-
-    return {
-      ...actor,
-      escenas: escenasAleatorias.sort((a, b) => a - b).join(", "),
-    }
-  })
 
   return (
     <div className="overflow-x-auto">
@@ -299,27 +282,35 @@ function TablaCostosAvanzada({ resultados }) {
         <TableHeader className="bg-gray-200">
           <TableRow>
             <TableHead className="font-bold">Actor</TableHead>
-            <TableHead className="font-bold">Escenas</TableHead>
-            <TableHead className="font-bold">Tiempo (min)</TableHead>
-            <TableHead className="font-bold">Costo Unitario</TableHead>
+            <TableHead className="font-bold">Rango Inicio</TableHead>
+            <TableHead className="font-bold">Rango Fin</TableHead>
+            <TableHead className="font-bold">Unidades de Tiempo</TableHead>
+            <TableHead className="font-bold">Costo por Unidad</TableHead>
             <TableHead className="font-bold">Costo Total</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {actoresConEscenas.map((actor, index) => (
-            <TableRow key={actor.nombre} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-              <TableCell className="font-medium">{actor.nombre}</TableCell>
-              <TableCell>{actor.escenas}</TableCell>
-              <TableCell>{actor.tiempo}</TableCell>
-              <TableCell>${(actor.costo / actor.tiempo).toFixed(2)}</TableCell>
-              <TableCell className="font-semibold text-red-700">${actor.costo.toFixed(2)}</TableCell>
-            </TableRow>
-          ))}
+          {resultados.tiempos_por_actor.map((actor, index) => {
+            // Encontrar el costo por unidad del actor en los datos originales
+            const actorData = data?.actores?.find((a) => a.nombre === actor.nombre)
+            const costoPorUnidad = actorData ? actorData.costoPorMinuto : actor.costo / actor.unidades
+
+            return (
+              <TableRow key={actor.nombre} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                <TableCell className="font-medium">{actor.nombre}</TableCell>
+                <TableCell>Escena {actor.rango_escenas_inicio}</TableCell>
+                <TableCell>Escena {actor.rango_escenas_fin}</TableCell>
+                <TableCell className="text-center">{actor.unidades}</TableCell>
+                <TableCell>${costoPorUnidad.toFixed(2)}</TableCell>
+                <TableCell className="font-semibold text-red-700">${actor.costo.toFixed(2)}</TableCell>
+              </TableRow>
+            )
+          })}
           <TableRow className="bg-red-50">
-            <TableCell colSpan={4} className="font-bold text-right">
+            <TableCell colSpan={5} className="font-bold text-right">
               Total
             </TableCell>
-            <TableCell className="font-bold text-red-700">${costo_total.toFixed(2)}</TableCell>
+            <TableCell className="font-bold text-red-700">${resultados.costo_total.toFixed(2)}</TableCell>
           </TableRow>
         </TableBody>
       </Table>
@@ -327,33 +318,37 @@ function TablaCostosAvanzada({ resultados }) {
   )
 }
 
+// Secuencia de escenas corregida
 function SecuenciaEscenas({ resultados, data }) {
   if (!resultados) return null
 
-  // Simular datos de actores para cada escena si no están disponibles
   const escenasConDetalles = resultados.orden_escenas.map((escenaId, index) => {
     const escena = data?.escenas?.find((e) => e.id === escenaId) || {
       id: escenaId,
-      duracion: Math.floor(Math.random() * 3) + 1, // 1-3 minutos
+      duracion: 1,
       actoresParticipantes: [],
     }
 
-    // Si no hay actores participantes, simular algunos
-    const actoresEnEscena =
-      escena.actoresParticipantes.length > 0
-        ? escena.actoresParticipantes.map((actorId) => {
-            const actor = data?.actores?.find((a) => a.id === actorId)
-            return actor ? actor.nombre : `Actor${actorId}`
-          })
-        : resultados.tiempos_por_actor
-            .filter(() => Math.random() > 0.5) // Seleccionar aleatoriamente algunos actores
-            .map((actor) => actor.nombre)
+    // Obtener actores que participan en esta escena
+    const actoresEnEscena = escena.actoresParticipantes
+      .map((actorId) => {
+        const actor = data?.actores?.find((a) => a.id === actorId)
+        return actor ? actor.nombre : `Actor${actorId}`
+      })
+      .filter(Boolean)
+
+    // Calcular costo de esta escena específica
+    const costoEscena = actoresEnEscena.reduce((total, nombreActor) => {
+      const actorData = data?.actores?.find((a) => a.nombre === nombreActor)
+      return total + (actorData ? actorData.costoPorMinuto * escena.duracion : 0)
+    }, 0)
 
     return {
       orden: index + 1,
       id: escenaId,
       duracion: escena.duracion,
       actores: actoresEnEscena.join(", "),
+      costoEscena: costoEscena,
     }
   })
 
@@ -364,7 +359,7 @@ function SecuenciaEscenas({ resultados, data }) {
           const escena = escenasConDetalles.find((e) => e.id === escenaId)
           return (
             <Badge key={index} className="bg-red-700 hover:bg-red-800 text-base py-1 px-3">
-              {escenaId} <span className="text-xs ml-1">({escena?.duracion || "?"} min)</span>
+              {escenaId} <span className="text-xs ml-1">({escena?.duracion || "?"} u)</span>
             </Badge>
           )
         })}
@@ -373,13 +368,17 @@ function SecuenciaEscenas({ resultados, data }) {
       <div className="space-y-3">
         {escenasConDetalles.map((escena) => (
           <div key={escena.id} className="p-3 border border-gray-300 rounded-md bg-white">
-            <div className="flex items-center gap-2">
-              <div className="bg-red-700 text-white rounded-full w-6 h-6 flex items-center justify-center font-bold">
-                {escena.orden}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="bg-red-700 text-white rounded-full w-6 h-6 flex items-center justify-center font-bold">
+                  {escena.orden}
+                </div>
+                <h4 className="font-semibold">
+                  Escena {escena.id}
+                  <span className="text-gray-500 font-normal"> (Duración: {escena.duracion} unidades)</span>
+                </h4>
               </div>
-              <h4 className="font-semibold">
-                Escena {escena.id} <span className="text-gray-500 font-normal">(Duración: {escena.duracion} min)</span>
-              </h4>
+              <div className="text-sm font-semibold text-red-700">Costo: ${escena.costoEscena.toFixed(2)}</div>
             </div>
             <div className="mt-2 pl-8">
               <p className="text-gray-700">
@@ -389,24 +388,45 @@ function SecuenciaEscenas({ resultados, data }) {
           </div>
         ))}
       </div>
+
+      {/* Resumen de la secuencia */}
+      <div className="mt-6 p-4 bg-gray-50 rounded-md border border-gray-300">
+        <h4 className="font-semibold text-gray-800 mb-2">Resumen de la Secuencia</h4>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+          <div>
+            <span className="text-gray-600">Total Escenas:</span>
+            <div className="font-semibold">{resultados.orden_escenas.length}</div>
+          </div>
+          <div>
+            <span className="text-gray-600">Duración Total:</span>
+            <div className="font-semibold">{escenasConDetalles.reduce((sum, e) => sum + e.duracion, 0)} unidades</div>
+          </div>
+          <div>
+            <span className="text-gray-600">Costo Total:</span>
+            <div className="font-semibold text-red-700">${resultados.costo_total}</div>
+          </div>
+          <div>
+            <span className="text-gray-600">Actores Involucrados:</span>
+            <div className="font-semibold">{resultados.tiempos_por_actor.length}</div>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
 
-// Modificar la función GraficoCostosAcumulados para hacerla responsive
-function GraficoCostosAcumulados({ resultados }) {
+// Gráfico de costos acumulados corregido
+function GraficoCostosAcumulados({ resultados, data }) {
   const canvasRef = useRef(null)
 
   useEffect(() => {
-    if (!canvasRef.current || !resultados) return
+    if (!canvasRef.current || !resultados || !data) return
 
-    // Función para dibujar el gráfico
     const dibujarGrafico = () => {
       const canvas = canvasRef.current
       const ctx = canvas.getContext("2d")
       const dpr = window.devicePixelRatio || 1
 
-      // Ajustar el canvas para pantallas de alta resolución
       const rect = canvas.getBoundingClientRect()
       canvas.width = rect.width * dpr
       canvas.height = rect.height * dpr
@@ -414,44 +434,53 @@ function GraficoCostosAcumulados({ resultados }) {
       canvas.style.width = `${rect.width}px`
       canvas.style.height = `${rect.height}px`
 
-      // Limpiar el canvas
       ctx.clearRect(0, 0, canvas.width, canvas.height)
 
-      // Configuración del gráfico
       const margin = {
         top: 40,
         right: 30,
         bottom: 50,
-        left: rect.width < 500 ? 50 : 60, // Ajustar margen izquierdo en pantallas pequeñas
+        left: rect.width < 500 ? 50 : 60,
       }
       const width = rect.width - margin.left - margin.right
       const height = rect.height - margin.top - margin.bottom
 
-      // Datos para el gráfico
-      const actores = resultados.tiempos_por_actor
-      const escenas = resultados.orden_escenas
-
-      // Calcular costos acumulados por escena
+      // Calcular costos acumulados reales por escena
       const costosAcumulados = []
-      let costoTotal = 0
+      let costoAcumulado = 0
 
-      // Simular costos acumulados para cada escena
-      escenas.forEach((escenaId, index) => {
-        // Simular un incremento de costo para esta escena
-        const incremento = Math.floor(resultados.costo_total * (0.1 + Math.random() * 0.2))
-        costoTotal += incremento
+      resultados.orden_escenas.forEach((escenaId, index) => {
+        const escena = data.escenas.find((e) => e.id === escenaId)
 
-        // Limitar el costo total al costo total real
-        costoTotal = Math.min(costoTotal, resultados.costo_total)
+        if (escena) {
+          // Calcular el costo de esta escena específica
+          const actoresEnEscena = escena.actoresParticipantes
+            .map((actorId) => data.actores.find((a) => a.id === actorId))
+            .filter(Boolean)
+
+          const costoEscena = actoresEnEscena.reduce((total, actor) => {
+            return total + actor.costoPorMinuto * escena.duracion
+          }, 0)
+
+          costoAcumulado += costoEscena
+        }
 
         costosAcumulados.push({
           escena: escenaId,
-          costo: costoTotal,
+          costo: costoAcumulado,
+          posicion: index,
         })
       })
 
-      // Calcular escalas
-      const escalaX = width / (escenas.length - 1)
+      // Ajustar el último punto al costo total real
+      if (costosAcumulados.length > 0) {
+        const factor = resultados.costo_total / costoAcumulado
+        costosAcumulados.forEach((punto) => {
+          punto.costo *= factor
+        })
+      }
+
+      const escalaX = width / (resultados.orden_escenas.length - 1)
       const escalaY = height / resultados.costo_total
 
       // Dibujar ejes
@@ -459,16 +488,15 @@ function GraficoCostosAcumulados({ resultados }) {
       ctx.moveTo(margin.left, margin.top)
       ctx.lineTo(margin.left, height + margin.top)
       ctx.lineTo(width + margin.left, height + margin.top)
-      ctx.strokeStyle = "#6b7280" // Gris
+      ctx.strokeStyle = "#6b7280"
       ctx.stroke()
 
-      // Etiqueta del eje X
-      ctx.fillStyle = "#374151" // Gris oscuro
+      // Etiquetas
+      ctx.fillStyle = "#374151"
       ctx.font = "12px Arial"
       ctx.textAlign = "center"
-      ctx.fillText("Escenas", margin.left + width / 2, height + margin.top + 35)
+      ctx.fillText("Secuencia de Escenas", margin.left + width / 2, height + margin.top + 35)
 
-      // Etiqueta del eje Y
       ctx.save()
       ctx.translate(15, margin.top + height / 2)
       ctx.rotate(-Math.PI / 2)
@@ -476,14 +504,12 @@ function GraficoCostosAcumulados({ resultados }) {
       ctx.fillText("Costo Acumulado ($)", 0, 0)
       ctx.restore()
 
-      // Dibujar las marcas en el eje X (escenas)
-      // Ajustar para mostrar menos marcas en pantallas pequeñas
-      const mostrarTodasLasEscenas = rect.width >= 500 || escenas.length <= 5
-      const pasoEscenas = mostrarTodasLasEscenas ? 1 : Math.ceil(escenas.length / 5)
+      // Marcas en X (escenas)
+      const mostrarTodas = rect.width >= 500 || resultados.orden_escenas.length <= 5
+      const paso = mostrarTodas ? 1 : Math.ceil(resultados.orden_escenas.length / 5)
 
-      escenas.forEach((escenaId, index) => {
-        // En pantallas pequeñas, mostrar solo algunas marcas
-        if (mostrarTodasLasEscenas || index % pasoEscenas === 0) {
+      resultados.orden_escenas.forEach((escenaId, index) => {
+        if (mostrarTodas || index % paso === 0) {
           const x = margin.left + index * escalaX
           ctx.beginPath()
           ctx.moveTo(x, height + margin.top)
@@ -493,7 +519,7 @@ function GraficoCostosAcumulados({ resultados }) {
         }
       })
 
-      // Dibujar las marcas en el eje Y (costos)
+      // Marcas en Y (costos)
       const numMarcasY = rect.width < 500 ? 3 : 5
       const incrementoY = resultados.costo_total / numMarcasY
 
@@ -509,7 +535,7 @@ function GraficoCostosAcumulados({ resultados }) {
         ctx.fillText(`$${costo.toFixed(0)}`, margin.left - 10, y + 4)
       }
 
-      // Dibujar la línea de costos acumulados
+      // Dibujar línea de costos acumulados
       ctx.beginPath()
       ctx.moveTo(margin.left, height + margin.top)
 
@@ -519,33 +545,32 @@ function GraficoCostosAcumulados({ resultados }) {
         ctx.lineTo(x, y)
       })
 
-      ctx.strokeStyle = "#dc2626" // Rojo
+      ctx.strokeStyle = "#dc2626"
       ctx.lineWidth = 3
       ctx.stroke()
 
-      // Dibujar puntos en cada escena
+      // Dibujar puntos
       costosAcumulados.forEach((punto, index) => {
         const x = margin.left + index * escalaX
         const y = margin.top + height - punto.costo * escalaY
 
         ctx.beginPath()
         ctx.arc(x, y, 5, 0, Math.PI * 2)
-        ctx.fillStyle = "#dc2626" // Rojo
+        ctx.fillStyle = "#dc2626"
         ctx.fill()
-        ctx.strokeStyle = "#ffffff" // Blanco
+        ctx.strokeStyle = "#ffffff"
         ctx.lineWidth = 2
         ctx.stroke()
 
-        // Mostrar el costo en cada punto
-        // En pantallas pequeñas, mostrar menos etiquetas
-        if (mostrarTodasLasEscenas || index % pasoEscenas === 0 || index === costosAcumulados.length - 1) {
-          ctx.fillStyle = "#111827" // Casi negro
+        // Etiquetas de costo
+        if (mostrarTodas || index % paso === 0 || index === costosAcumulados.length - 1) {
+          ctx.fillStyle = "#111827"
           ctx.textAlign = "center"
           ctx.fillText(`$${punto.costo.toFixed(0)}`, x, y - 10)
         }
       })
 
-      // Rellenar el área bajo la curva
+      // Área bajo la curva
       ctx.beginPath()
       ctx.moveTo(margin.left, height + margin.top)
 
@@ -555,33 +580,24 @@ function GraficoCostosAcumulados({ resultados }) {
         ctx.lineTo(x, y)
       })
 
-      ctx.lineTo(margin.left + (escenas.length - 1) * escalaX, height + margin.top)
+      ctx.lineTo(margin.left + (resultados.orden_escenas.length - 1) * escalaX, height + margin.top)
       ctx.closePath()
-      ctx.fillStyle = "rgba(220, 38, 38, 0.1)" // Rojo con transparencia
+      ctx.fillStyle = "rgba(220, 38, 38, 0.1)"
       ctx.fill()
 
-      // Título del gráfico
-      ctx.fillStyle = "#111827" // Casi negro
+      // Título
+      ctx.fillStyle = "#111827"
       ctx.font = "bold 14px Arial"
       ctx.textAlign = "center"
       ctx.fillText("Costos Acumulados por Escena", margin.left + width / 2, 20)
     }
 
-    // Dibujar el gráfico inicialmente
     dibujarGrafico()
 
-    // Agregar event listener para redimensionar
-    const handleResize = () => {
-      dibujarGrafico()
-    }
-
+    const handleResize = () => dibujarGrafico()
     window.addEventListener("resize", handleResize)
-
-    // Limpiar event listener al desmontar
-    return () => {
-      window.removeEventListener("resize", handleResize)
-    }
-  }, [resultados])
+    return () => window.removeEventListener("resize", handleResize)
+  }, [resultados, data])
 
   return (
     <div className="w-full h-[400px] md:h-[450px] bg-white p-2 border border-gray-300 rounded-md overflow-hidden">

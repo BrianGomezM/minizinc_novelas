@@ -105,8 +105,19 @@ constraint forall(k in 1..m)(
 );
 
 
+%RESTRICCION DE SIMETRIA%
+%Priorizar escenas del actor más caro
+array[ACTORES] of int: costes = [Coste[a] | a in ACTORES];
+int: max_coste = max(costes);
+ACTORES: actor_caro = [a | a in ACTORES where Coste[a] == max_coste][1];
 
-solve :: int_search(order, first_fail, indomain_min) minimize objetivo;
+var int: promedio_posiciones = 
+    sum(s in 1..n_escenas where Participa[actor_caro, s])(invOrd[s]) div
+    sum(s in 1..n_escenas where Participa[actor_caro, s])(1);
+
+constraint promedio_posiciones <= n_escenas div 2;
+
+solve :: int_search(order, dom_w_deg, indomain_min, complete) minimize objetivo;
 
 output [
     "Orden de escenas: ", show(order), "\n",

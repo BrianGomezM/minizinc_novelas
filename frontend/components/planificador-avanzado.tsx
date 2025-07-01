@@ -172,15 +172,6 @@ export function PlanificadorAvanzado() {
           </CardHeader>
           <CardContent className="pt-6">
             <div className="grid gap-6">
-              <div className="flex items-center space-x-2 p-4 bg-gray-100 rounded-md border border-gray-300">
-                <Checkbox
-                  id="eliminar-simetrias"
-                  checked={eliminarSimetrias}
-                  onCheckedChange={setEliminarSimetrias}
-                  className="border-red-700 text-red-700"
-                />
-                <Label htmlFor="eliminar-simetrias">Eliminar simetrías para optimizar la solución</Label>
-              </div>
 
               <div className="p-4 bg-gray-50 rounded-md border border-gray-300">
                 <h3 className="text-lg font-semibold mb-4 text-gray-800">Disponibilidad de Actores</h3>
