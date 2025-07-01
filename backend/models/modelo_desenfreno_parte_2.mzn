@@ -107,6 +107,7 @@ constraint forall(k in 1..m)(
 
 
 solve :: int_search(order, first_fail, indomain_min) minimize objetivo;
+%solve minimize costo_total;
 
 output [
     "Orden de escenas: ", show(order), "\n",
