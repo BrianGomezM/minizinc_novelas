@@ -105,10 +105,30 @@ export function optimizarPlanificacionAvanzada(
     // 3. Evaluar cada permutación y encontrar la mejor
     let mejorSolucion = null
     let mejorCosto = Number.POSITIVE_INFINITY
+    let evitarPares = []
+
+    // Si hay restricciones de evitar en los datos originales, usarlas
+    if (data.datosOriginales.evitar_pares && data.datosOriginales.evitar_pares.length > 0) {
+      evitarPares = [...restriccionesCoincidencia, ...data.datosOriginales.evitar_pares]
+    } else {
+      evitarPares = restriccionesCoincidencia
+    }
+
+    // Usar las restricciones de disponibilidad del archivo si existen
+    const restriccionesFinales = restriccionesActores.map((restriccion) => {
+      const actor = data.actores.find((a) => a.id === restriccion.id)
+      if (actor && actor.disponibilidad > 0 && !restriccion.tiempoMaximo) {
+        return {
+          ...restriccion,
+          tiempoMaximo: actor.disponibilidad,
+        }
+      }
+      return restriccion
+    })
 
     for (const ordenEscenas of permutaciones) {
       // Verificar si la permutación cumple con las restricciones
-      if (!cumpleRestriccionesCoincidencia(ordenEscenas, data, restriccionesCoincidencia)) {
+      if (!cumpleRestriccionesCoincidencia(ordenEscenas, data, evitarPares)) {
         continue
       }
 
@@ -116,7 +136,7 @@ export function optimizarPlanificacionAvanzada(
       const tiemposActores = calcularTiemposActores(ordenEscenas, data)
 
       // Verificar restricciones de tiempo máximo
-      if (!cumpleRestriccionesTiempo(tiemposActores, restriccionesActores)) {
+      if (!cumpleRestriccionesTiempo(tiemposActores, restriccionesFinales)) {
         continue
       }
 

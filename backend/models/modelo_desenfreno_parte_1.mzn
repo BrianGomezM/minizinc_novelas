@@ -54,8 +54,8 @@ constraint forall(a in ACTORES)(
 constraint costo_total = sum(a in ACTORES)( costo_actor[a] );
 
 % Resolución: minimizar coste_total
-%solve :: int_search(order, dom_w_deg, indomain_min) minimize costo_total;
-solve minimize costo_total;
+solve :: int_search(order, dom_w_deg, indomain_min) minimize costo_total;
+%solve minimize costo_total;
 % Salida de resultados
 
 

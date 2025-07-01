@@ -10,7 +10,7 @@ const steps = [
   { id: 5, name: "Visualizando resultados" },
 ]
 
-export function ProgressSteps({ currentStep }) {
+export function ProgressSteps({ currentStep }: { currentStep: number }) {
   return (
     <div className="py-4">
       <ol className="relative border-l border-gray-300 ml-3">
@@ -25,7 +25,7 @@ export function ProgressSteps({ currentStep }) {
               <span
                 className={`absolute flex items-center justify-center w-8 h-8 rounded-full -left-4 ring-4 ring-white ${
                   isActive
-                    ? "bg-red-700 text-white"
+                    ? "bg-green-600 text-white"
                     : isCompleted
                       ? "bg-green-600 text-white"
                       : "bg-gray-200 text-gray-500"
@@ -34,19 +34,22 @@ export function ProgressSteps({ currentStep }) {
                 {isCompleted ? (
                   <CheckIcon className="w-4 h-4" />
                 ) : isActive ? (
-                  <Loader2Icon className="w-4 h-4 animate-spin" />
+                  step.id === 3 || step.id === 4 ? (
+                    <Loader2Icon className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <span className="text-sm">{step.id}</span>
+                  )
                 ) : (
                   <span className="text-sm">{step.id}</span>
                 )}
               </span>
               <h3
                 className={`font-medium ${
-                  isActive ? "text-red-700" : isCompleted ? "text-green-600" : "text-gray-500"
+                  isActive ? "text-green-600" : isCompleted ? "text-green-600" : "text-gray-500"
                 }`}
               >
                 {step.name}
                 {isCompleted && " ✓"}
-                {isActive && " ●"}
               </h3>
             </li>
           )

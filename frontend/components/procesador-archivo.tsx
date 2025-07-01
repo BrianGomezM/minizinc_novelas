@@ -8,12 +8,15 @@ import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { parseDznFile } from "@/lib/parser"
+import { calcularEstadisticasDetalladas, simularCalculoDetallado } from "@/lib/calculator"
 import { VisualizacionDatosArchivo } from "@/components/visualizacion-datos-archivo"
 import { VisualizacionAvanzada } from "@/components/visualizacion-avanzada"
 import { ProgressSteps } from "@/components/progress-steps"
 
 export function ProcesadorArchivo() {
   const [data, setData] = useState(null)
+  const [estadisticas, setEstadisticas] = useState(null)
+  const [calculoDetallado, setCalculoDetallado] = useState(null)
   const [resultados, setResultados] = useState(null)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
@@ -38,7 +41,14 @@ export function ProcesadorArchivo() {
     try {
       const text = await file.text()
       const parsedData = parseDznFile(text)
+
+      // Calcular estadísticas y estimaciones
+      const stats = calcularEstadisticasDetalladas(parsedData)
+      const calculo = simularCalculoDetallado(parsedData)
+
       setData(parsedData)
+      setEstadisticas(stats)
+      setCalculoDetallado(calculo)
       setCurrentStep(2) // Datos cargados
       setResultados(null)
       setActiveTab("datos") // Cambiar a la pestaña de datos
@@ -66,25 +76,33 @@ export function ProcesadorArchivo() {
 
       await new Promise((resolve) => setTimeout(resolve, 1500))
 
-      // Usamos los datos de ejemplo proporcionados
+      // Aquí es donde se haría la llamada real al backend
+      // Por ahora, usamos datos de ejemplo basados en el formato esperado
       const resultadosEjemplo = {
-        orden_escenas: [1, 4, 3, 2, 5],
-        costo_total: 150,
+        orden_escenas: [1, 5, 2, 3, 4],
+        costo_total: 138,
+        tiempo_compartido_actores_evitar: 0,
         tiempos_por_actor: [
           {
             nombre: "Actor1",
-            tiempo: 8,
-            costo: 80,
+            rango_escenas_inicio: 1,
+            rango_escenas_fin: 4,
+            unidades: 7,
+            costo: 70,
           },
           {
             nombre: "Actor2",
-            tiempo: 6,
-            costo: 30,
+            rango_escenas_inicio: 1,
+            rango_escenas_fin: 3,
+            unidades: 4,
+            costo: 20,
           },
           {
             nombre: "Actor3",
-            tiempo: 5,
-            costo: 40,
+            rango_escenas_inicio: 3,
+            rango_escenas_fin: 5,
+            unidades: 6,
+            costo: 48,
           },
         ],
       }
@@ -127,7 +145,7 @@ export function ProcesadorArchivo() {
 
             {currentStep > 0 && <ProgressSteps currentStep={currentStep} />}
 
-            {data && (
+            {data && estadisticas && (
               <div className="grid gap-2">
                 <div className="p-3 md:p-4 bg-gray-100 rounded-md border border-gray-300">
                   <p className="font-medium">
@@ -144,16 +162,42 @@ export function ProcesadorArchivo() {
                     </div>
                     <div className="bg-white p-2 rounded border border-gray-200 text-center">
                       <p className="text-sm text-gray-600">Duración Total</p>
-                      <p className="font-semibold">
-                        {data.escenas.reduce((sum, escena) => sum + escena.duracion, 0)} min
-                      </p>
+                      <p className="font-semibold">{estadisticas.duracion_total} min</p>
                     </div>
                     <div className="bg-white p-2 rounded border border-gray-200 text-center">
-                      <p className="text-sm text-gray-600">Costo Máx. Actor</p>
-                      <p className="font-semibold">${Math.max(...data.actores.map((a) => a.costoPorMinuto))}</p>
+                      <p className="text-sm text-gray-600">Costo Estimado</p>
+                      <p className="font-semibold">${estadisticas.costo_total_estimado}</p>
                     </div>
                   </div>
                 </div>
+
+                {/* Mostrar cálculo detallado */}
+                {calculoDetallado && (
+                  <div className="p-3 md:p-4 bg-blue-50 rounded-md border border-blue-300">
+                    <h4 className="font-semibold text-blue-800 mb-2">Cálculo Estimado Detallado</h4>
+                    <p className="text-sm text-blue-700 mb-2">
+                      Secuencia estimada: [{calculoDetallado.secuencia.join(", ")}]
+                    </p>
+                    <div className="space-y-2">
+                      {calculoDetallado.actores.map((actor, index) => (
+                        <div key={index} className="text-sm">
+                          <span className="font-medium">{actor.nombre}:</span>
+                          {actor.escenas_participadas.length > 0 ? (
+                            <span className="ml-2">
+                              Escenas {actor.escenas_participadas.join(", ")} → Tiempo: {actor.tiempo_total} min →
+                              Costo: ${actor.costo}
+                            </span>
+                          ) : (
+                            <span className="ml-2 text-gray-600">No participa</span>
+                          )}
+                        </div>
+                      ))}
+                      <div className="font-semibold text-blue-800 pt-2 border-t border-blue-200">
+                        Costo Total Estimado: ${calculoDetallado.costo_total}
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {!resultados && (
                   <Button
@@ -187,7 +231,7 @@ export function ProcesadorArchivo() {
               </TabsList>
 
               <TabsContent value="datos" className="mt-0">
-                <VisualizacionDatosArchivo data={data} />
+                <VisualizacionDatosArchivo data={data} estadisticas={estadisticas} />
               </TabsContent>
 
               <TabsContent value="resultados" className="mt-0">
